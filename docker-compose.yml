@@ -5,9 +5,12 @@ services:
       - "3000:3000"
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/geo_benchmark
+      - FIRESTORE_EMULATOR_HOST=firestore:8080
     depends_on:
       db:
         condition: service_healthy
+      firestore:
+        condition: service_started
     env_file:
       - .env
 
@@ -26,6 +29,14 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+
+  firestore:
+    image: google/cloud-sdk:slim
+    command: >
+      bash -c "apt-get update && apt-get install -y default-jre-headless &&
+      gcloud emulators firestore start --host-port=0.0.0.0:8080 --project=geo-benchmark-dev"
+    ports:
+      - "8080:8080"
 
 volumes:
   pgdata:

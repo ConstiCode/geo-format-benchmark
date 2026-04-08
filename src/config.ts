@@ -5,6 +5,7 @@ const envSchema = z.object({
   PORT: z.coerce.number().default(3000),
   DATABASE_URL: z.string().default('postgresql://postgres:postgres@localhost:5432/geo_benchmark'),
   FIRESTORE_PROJECT_ID: z.string().optional(),
+  FIRESTORE_EMULATOR_HOST: z.string().optional(),
   SERPER_API_KEY: z.string().optional(),
   OPENAI_API_KEY: z.string().optional(),
   GOOGLE_AI_API_KEY: z.string().optional(),

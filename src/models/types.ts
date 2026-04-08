@@ -1,9 +1,9 @@
-import { z } from "zod";
+import { z } from 'zod';
 
-export const ContentFormat = z.enum(["raw_html", "clean_html", "markdown", "json_ld"]);
+export const ContentFormat = z.enum(['raw_html', 'clean_html', 'markdown', 'json_ld']);
 export type ContentFormat = z.infer<typeof ContentFormat>;
 
-export const LLMProvider = z.enum(["openai", "gemini", "claude", "perplexity"]);
+export const LLMProvider = z.enum(['openai', 'gemini', 'claude', 'perplexity']);
 export type LLMProvider = z.infer<typeof LLMProvider>;
 
 export interface SerpResult {
@@ -30,13 +30,13 @@ export interface ExperimentRun {
   testFormat: ContentFormat;
   response?: string;
   citations?: Citation[];
-  status: "pending" | "running" | "completed" | "failed";
+  status: 'pending' | 'running' | 'completed' | 'failed';
 }
 
 export interface Citation {
   sourceIndex: number;
   rank: number;
-  sentiment: "positive" | "neutral" | "negative";
+  sentiment: 'positive' | 'neutral' | 'negative';
   excerpt: string;
 }
 

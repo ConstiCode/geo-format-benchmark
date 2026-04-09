@@ -31,5 +31,8 @@ coverage/
 # Test output
 data/test-formats.json
 
+# Project management
+tickets.md
+
 # Docker
 .docker-data/

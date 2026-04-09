@@ -11,6 +11,7 @@ const envSchema = z.object({
   GOOGLE_AI_API_KEY: z.string().optional(),
   ANTHROPIC_API_KEY: z.string().optional(),
   PERPLEXITY_API_KEY: z.string().optional(),
+  CORS_ORIGIN: z.string().default('http://localhost:5173'),
 });
 
 export const config = envSchema.parse(process.env);

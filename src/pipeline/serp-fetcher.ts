@@ -4,58 +4,58 @@ import { z } from 'zod';
 import { db } from '../models/db.js';
 import { serpResults as serpResultsTable } from '../models/schema.js';
 
-// The Serp API has a free tier limit of 2500 queries
+// SerpApi free tier: 100 searches/month
 
-const SerperOrganicSchema = z.object({
+const SerpApiOrganicSchema = z.object({
   title: z.string(),
   link: z.string(),
-  snippet: z.string(),
+  snippet: z.string().optional().default(''),
   position: z.number(),
 });
 
-const SerperResponseSchema = z.object({
-  organic: z.array(SerperOrganicSchema),
+const SerpApiResponseSchema = z.object({
+  organic_results: z.array(SerpApiOrganicSchema),
 });
 
 export async function fetchSerpResults(query: string, queryId: string): Promise<SerpResult[]> {
   if (!config.SERPER_API_KEY) {
     throw new Error('SERPER_API_KEY is required');
   }
-  const response = await fetch('https://google.serper.dev/search', {
-    method: 'POST',
-    headers: {
-      'X-API-KEY': config.SERPER_API_KEY,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ q: query, num: 5 }),
+
+  const params = new URLSearchParams({
+    engine: 'google',
+    q: query,
+    num: '5',
+    api_key: config.SERPER_API_KEY,
   });
 
-  if (response.status == 401) {
-    throw new Error('Invalid SERPER_API_KEY');
+  const response = await fetch(`https://serpapi.com/search.json?${params}`);
+
+  if (response.status === 401) {
+    throw new Error('Invalid SerpApi API key');
   }
 
-  if (response.status == 429) {
-    throw new Error('Rate Limit reached please retry');
+  if (response.status === 429) {
+    throw new Error('Rate limit reached, please retry');
   }
 
   if (!response.ok) {
-    throw new Error('There was an error fetching series results.');
+    throw new Error(`SerpApi error: ${response.status} ${response.statusText}`);
   }
 
   const data = await response.json();
-  const parsed = SerperResponseSchema.parse(data);
+  const parsed = SerpApiResponseSchema.parse(data);
 
-  const serpResults = parsed.organic.map((item) => ({
+  const serpResults = parsed.organic_results.slice(0, 5).map((item, index) => ({
     url: item.link,
     title: item.title,
     metaDescription: item.snippet,
     rawHtml: '',
-    position: item.position,
+    position: item.position ?? index + 1,
   }));
 
   console.log(`SERP: "${query}" returned ${serpResults.length} results`);
 
-  // write the results into the db
   await db.insert(serpResultsTable).values(
     serpResults.map((result) => ({
       queryId: queryId,

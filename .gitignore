@@ -28,5 +28,8 @@ npm-debug.log*
 # Test coverage
 coverage/
 
+# Test output
+data/test-formats.json
+
 # Docker
 .docker-data/

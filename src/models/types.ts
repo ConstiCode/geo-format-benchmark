@@ -5,13 +5,20 @@ import { z } from 'zod';
 export const ContentFormat = z.enum(['raw_html', 'clean_html', 'markdown', 'json_ld']);
 export type ContentFormat = z.infer<typeof ContentFormat>;
 
-export const LlmProvider = z.enum([
-  'gpt-4o-mini',
-  'gemini-flash',
-  'claude-haiku',
-  'perplexity-sonar',
-]);
+export const LlmProvider = z.enum(['OpenAi', 'Google', 'Anthropic', 'Perplexity']);
 export type LlmProvider = z.infer<typeof LlmProvider>;
+
+export const LlmModel = z.enum(['gpt-4o-mini', 'gemini-flash', 'claude-haiku', 'perplexity-sonar']);
+export type LlmModel = z.infer<typeof LlmModel>;
+
+export type LlmResponse = {
+  content: string;
+  provider: LlmProvider;
+  model: LlmModel;
+  inputTokens: number;
+  outputTokens: number;
+  latencyMs: number;
+};
 
 export const ExperimentPhase = z.enum([
   'fetching',

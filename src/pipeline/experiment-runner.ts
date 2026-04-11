@@ -1,4 +1,22 @@
-import type { RunConfig, ExperimentConfig, SerpResult, ContentFormat } from '../models/types.js';
+import type {
+  RunConfig,
+  ExperimentConfig,
+  SerpResult,
+  ContentFormat,
+  FormattedContent,
+} from '../models/types.js';
+import { fetchSerpResults } from './serp-fetcher.js';
+import { fetchAndExtract } from './html-extractor.js';
+import { convertAllFormats } from './format-converter.js';
+import { complete } from './llm-client.js';
+import { db } from '../models/db.js';
+import { experimentRuns } from '../models/schema.js';
+import {
+  createExperimentStatus,
+  incrementCompletedRuns,
+  incrementFailedRuns,
+  setPhase,
+} from '../models/firestore.js';
 
 const TEST_FORMATS: ContentFormat[] = ['json_ld', 'markdown', 'raw_html'];
 
@@ -69,4 +87,125 @@ export function generateAllRuns(config: ExperimentConfig, sources: SerpResult[])
   }
 
   return runConfigs;
+}
+
+// --- Part 2: Prompt Assembly ---
+
+export function assemblePrompt(
+  query: string,
+  formattedSources: Record<ContentFormat, FormattedContent>[],
+  runConfig: RunConfig,
+): string {
+  // Input:
+  //   query — the search query, e.g. "best CRM for startups"
+  //   formattedSources — array of 5 sources, each containing all 4 format versions
+  //     formattedSources[0] = { raw_html: FormattedContent, clean_html: ..., markdown: ..., json_ld: ... }
+  //     formattedSources[1] = { ... }
+  //     ... (5 total, one per SERP result)
+  //   runConfig — one RunConfig from generateAllRuns, tells you:
+  //     runConfig.sourceOrder — e.g. [2,0,4,1,3] (order to place sources in prompt)
+  //     runConfig.sourceFormats — e.g. ['json_ld','clean_html','clean_html','clean_html','clean_html']
+  //
+  // Output: the full prompt string to send to the LLM
+  let prompt = `You are a product advisor. Based ONLY on the following 5 sources,
+recommend the best option for: "${query}"
+
+Rules:
+- Cite sources by their [Source N] tag when making claims
+- Rank your top 3 recommendations
+- Explain why you chose each one
+
+`;
+
+  for (let position = 0; position < runConfig.sourceOrder.length; position++) {
+    const originalIndex = runConfig.sourceOrder[position];
+    const format = runConfig.sourceFormats[originalIndex];
+    const source = formattedSources[originalIndex][format];
+
+    prompt += `=== Source ${position + 1} (${source.url})===\n${source.content}\n\n`;
+  }
+  prompt += 'Provide your recommendations:';
+  return prompt;
+}
+
+// --- Part 3: Experiment Orchestration ---
+
+export async function runExperiment(config: ExperimentConfig, queryId: string): Promise<void> {
+  // 1. Fetch SERP results
+  await setPhase(config.id, 'fetching');
+  const serpResults = await fetchSerpResults(config.query, queryId);
+
+  // 2. Fetch HTML for each result
+  const sourcesWithHtml: SerpResult[] = [];
+  for (const result of serpResults) {
+    try {
+      const withHtml = await fetchAndExtract(result, queryId);
+      sourcesWithHtml.push(withHtml);
+    } catch (error) {
+      console.error(`Failed to fetch HTML for ${result.url}:`, error);
+      sourcesWithHtml.push(result); // keep result with empty rawHtml
+    }
+  }
+
+  // 3. Convert each source to all 4 formats
+  await setPhase(config.id, 'converting');
+  const formattedSources = sourcesWithHtml.map((source, i) =>
+    convertAllFormats(source, `source-${i}`),
+  );
+
+  // 4. Generate all run configs
+  const runConfigs = generateAllRuns(config, sourcesWithHtml);
+
+  // 5. Initialize Firestore status
+  await createExperimentStatus(config.id, runConfigs.length);
+  await setPhase(config.id, 'running');
+
+  // 6. Execute each run sequentially
+  for (const runConfig of runConfigs) {
+    try {
+      const prompt = assemblePrompt(config.query, formattedSources, runConfig);
+      const llmResponse = await complete(prompt, runConfig.llmProvider);
+
+      // Store run in PostgreSQL
+      await db.insert(experimentRuns).values({
+        experimentId: config.id,
+        runNumber: runConfig.runNumber,
+        llmProvider: runConfig.llmProvider,
+        testSourceIndex: runConfig.testSourceIndex,
+        testFormat: runConfig.testFormat,
+        sourceOrder: runConfig.sourceOrder,
+        prompt: prompt,
+        rawResponse: llmResponse.content,
+        status: 'completed',
+        completedAt: new Date(),
+      });
+
+      await incrementCompletedRuns(config.id);
+      console.log(
+        `Run ${runConfig.runNumber}/${runConfigs.length} completed (${runConfig.llmProvider}, ${runConfig.testFormat})`,
+      );
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error(`Run ${runConfig.runNumber} failed:`, errorMsg);
+
+      // Store failed run
+      await db.insert(experimentRuns).values({
+        experimentId: config.id,
+        runNumber: runConfig.runNumber,
+        llmProvider: runConfig.llmProvider,
+        testSourceIndex: runConfig.testSourceIndex,
+        testFormat: runConfig.testFormat,
+        sourceOrder: runConfig.sourceOrder,
+        prompt: '',
+        status: 'failed',
+        error: errorMsg,
+      });
+
+      await incrementFailedRuns(config.id);
+    }
+  }
+
+  // 7. Mark experiment as complete
+  await setPhase(config.id, 'complete');
+  console.log(`Experiment ${config.id} complete: ${runConfigs.length} runs`);
 }

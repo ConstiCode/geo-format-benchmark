@@ -19,19 +19,34 @@ export function calculateCitationRate(runs: RunWithCitations[]): Record<ContentF
   const totalByFormat: Record<string, number> = {};
   const citedByFormat: Record<string, number> = {};
 
+  // Track clean_html baseline: how often non-test sources (always clean_html) get cited
+  let cleanHtmlTotal = 0;
+  let cleanHtmlCited = 0;
+
   runs.forEach((run) => {
     const format = run.runConfig.testFormat;
     totalByFormat[format] = (totalByFormat[format] ?? 0) + 1;
 
+    // Check if the test source was cited
     const wasCited = run.citations.some((c) => c.sourceIndex === run.runConfig.testSourceIndex);
     if (wasCited) {
       citedByFormat[format] = (citedByFormat[format] ?? 0) + 1;
+    }
+
+    // Check clean_html baseline: for each non-test source, was it cited?
+    for (let i = 0; i < run.runConfig.sourceFormats.length; i++) {
+      if (i === run.runConfig.testSourceIndex) continue; // skip test source
+      cleanHtmlTotal++;
+      const nonTestCited = run.citations.some((c) => c.sourceIndex === i);
+      if (nonTestCited) {
+        cleanHtmlCited++;
+      }
     }
   });
 
   const result: Record<ContentFormat, number> = {
     raw_html: 0,
-    clean_html: 0,
+    clean_html: cleanHtmlTotal > 0 ? cleanHtmlCited / cleanHtmlTotal : 0,
     markdown: 0,
     json_ld: 0,
   };

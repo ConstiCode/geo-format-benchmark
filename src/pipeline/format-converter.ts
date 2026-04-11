@@ -1,5 +1,6 @@
 import type { SerpResult, FormattedContent, ContentFormat } from '../models/types.js';
 import { extractMainContent } from './html-extractor.js';
+import * as cheerio from 'cheerio';
 import TurndownService from 'turndown';
 
 const turndownService = new TurndownService();
@@ -7,12 +8,18 @@ const turndownService = new TurndownService();
 /* Converter functions that convert the fetched html into the required types for testing */
 
 export function toRawHtml(serpResult: SerpResult, sourceId: string): FormattedContent {
+  // Strip <script> and <style> tags (huge, useless to LLMs) but keep all other HTML
+  // including nav, footer, ads — that's what makes it "raw" vs "clean"
+  const $ = cheerio.load(serpResult.rawHtml);
+  $('script, style').remove();
+  const stripped = $.html();
+
   return {
-    sourceId: sourceId, // unique ID for this source
-    url: serpResult.url, // the page URL
-    title: serpResult.title, // page title
-    format: 'raw_html' as const, // 'raw_html' | 'clean_html' | 'markdown' | 'json_ld'
-    content: serpResult.rawHtml, // the actual content in that format
+    sourceId: sourceId,
+    url: serpResult.url,
+    title: serpResult.title,
+    format: 'raw_html' as const,
+    content: stripped.slice(0, 50000),
   };
 }
 

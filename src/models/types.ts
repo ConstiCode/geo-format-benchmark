@@ -20,6 +20,15 @@ export type LlmResponse = {
   latencyMs: number;
 };
 
+export type RunConfig = {
+  runNumber: number;
+  testSourceIndex: number;
+  testFormat: ContentFormat;
+  sourceFormats: ContentFormat[];
+  sourceOrder: number[];
+  llmProvider: LlmProvider;
+};
+
 export const ExperimentPhase = z.enum([
   'fetching',
   'converting',

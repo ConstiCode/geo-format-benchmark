@@ -4,6 +4,7 @@ import { Layout } from '@/components/Layout';
 import { Overview } from '@/pages/Overview';
 import { Queries } from '@/pages/Queries';
 import { Experiments } from '@/pages/Experiments';
+import { ExperimentDetail } from '@/pages/ExperimentDetail';
 
 const queryClient = new QueryClient();
 
@@ -16,6 +17,7 @@ function App() {
             <Route path="/" element={<Overview />} />
             <Route path="/queries" element={<Queries />} />
             <Route path="/experiments" element={<Experiments />} />
+            <Route path="/experiments/:id" element={<ExperimentDetail />} />
           </Route>
         </Routes>
       </BrowserRouter>

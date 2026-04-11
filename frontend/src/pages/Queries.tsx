@@ -1,9 +1,13 @@
 import { useState } from 'react';
 import { Card, CardHeader } from '@/components/Card';
 import { Search, Plus } from 'lucide-react';
+import { useQueries, useCreateQuery, useDeleteQuery } from '@/hooks/useExperiment';
 
 export function Queries() {
   const [query, setQuery] = useState('');
+  const { data } = useQueries();
+  const createQuery = useCreateQuery();
+  const deleteQuery = useDeleteQuery();
 
   return (
     <div>
@@ -28,6 +32,7 @@ export function Queries() {
             />
           </div>
           <button
+              onClick={() => createQuery.mutate(query)}
             disabled={!query.trim()}
             className="flex items-center gap-2 px-4 py-2.5 bg-accent text-white text-sm font-medium rounded-lg hover:bg-accent/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
@@ -61,11 +66,16 @@ export function Queries() {
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td colSpan={4} className="py-12 text-center text-text-muted">
-                  No queries yet. Add one above to get started.
-                </td>
-              </tr>
+            {data?.queries.map((q: { id: string; queryText: string; experimentCount: number; createdAt: string }) => (
+                <tr key={q.id} className="border-b border-border">
+                  <td className="py-3 px-4">{q.queryText}</td>
+                  <td className="py-3 px-4">{q.experimentCount}</td>
+                  <td className="py-3 px-4">{new Date(q.createdAt).toLocaleDateString()}</td>
+                  <td className="py-3 px-4 text-right">
+                    <button onClick={() => deleteQuery.mutate(q.id)}>Delete</button>
+                  </td>
+                </tr>
+            ))}
             </tbody>
           </table>
         </div>

@@ -30,6 +30,9 @@ coverage/
 
 # Test output
 data/test-formats.json
+data/experiment-log.txt
+data/experiment-output.txt
+data/experiment-results.json
 
 # Project management
 tickets.md

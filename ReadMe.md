@@ -10,7 +10,7 @@ Basierend auf: *"CORE: Controlling Output Rankings in Generative Engines for LLM
 
 ## Überblick
 
-Eine Webanwendung, die es dem Nutzer erlaubt, eine Google-Suche einzugeben. Die Anwendung fetcht automatisch die Top-5-Ergebnisse, wandelt jeden Inhalt in vier verschiedene Formate um und führt ein kontrolliertes Experiment durch: Dieselbe Frage wird mehrfach an LLMs gestellt, wobei sowohl das Format als auch die Reihenfolge der Quellen im Context systematisch rotiert werden. Die Ergebnisse werden in einem Dashboard visualisiert.
+Eine Webanwendung, die es dem Nutzer erlaubt, eine Google-Suche einzugeben. Die Anwendung fetcht automatisch die Top-5-Ergebnisse, wandelt jeden Inhalt in vier verschiedene Formate um und führt ein kontrolliertes Experiment durch. Dieselbe Frage wird mehrfach an LLMs gestellt, wobei sowohl das Format als auch die Reihenfolge der Quellen im Context systematisch rotiert werden. Die Ergebnisse werden in einem Dashboard visualisiert.
 
 ---
 
@@ -22,7 +22,7 @@ Der Nutzer gibt eine Suchanfrage ein, z.B. *"best CRM for startups"*.
 
 ### 2. SERP Fetch
 
-Die Anwendung ruft die Top-5 Google-Ergebnisse ab (via Serper.dev API, kostenloser Tier: 2.500 Abfragen). Für jedes Ergebnis wird gespeichert:
+Die Anwendung ruft die Top-5 Google-Ergebnisse ab. Für jedes Ergebnis wird gespeichert:
 
 - URL
 - Seitentitel
@@ -84,8 +84,6 @@ Für jede Format-Konfiguration werden **5 Permutationen** der Quellreihenfolge d
 - 15 Format-Runs × 5 Positionsrotationen = **75 Runs pro Query**
 - × 3 LLMs (GPT-4o-mini, Gemini Flash, Claude Haiku) = **225 Calls pro Query**
 
-**Hinweis:** Für ein MVP kann die Positionsrotation auf 1 Permutation reduziert werden (15 Runs × 3 LLMs = 45 Calls pro Query). Die volle Rotation wird als Option angeboten.
-
 ### 5. Prompt-Template
 
 ```
@@ -144,26 +142,49 @@ Ein React-Frontend zeigt:
 - **Detail-Ansicht:** Einzelne LLM-Antworten mit markierten Zitationen
 - **Export:** Ergebnisse als CSV für weitere Analyse
 
+
 ---
 
-## Tech Stack
+## Ergebnisse
 
-Ausgewählt mit Blick auf GCP-native Architektur und TypeScript-First-Entwicklung.
+Erste Ergebnisse aus kontrollierten Experimenten mit zwei Suchanfragen ("best CRM for startups", "Besten Deutschen Fahrrad Onlineshops"), jeweils 225 Runs (15 Format-Konfigurationen x 5 Positionsrotationen x 3 LLMs).
 
-| Komponente | Technologie | Begründung |
-|-----------|------------|------------|
-| Sprache | **TypeScript** (Backend + Frontend) | Einheitliche Sprache über den gesamten Stack, Typsicherheit end-to-end |
-| Backend Framework | **Express.js** auf GCP Cloud Functions | Serverless, auto-scaling, kein Infra-Management |
-| Task Queue | **GCP Cloud Tasks** | Asynchrone Orchestrierung der LLM-Experiment-Runs, Retry-Logik built-in |
-| Datenbank | **PostgreSQL** (Cloud SQL) + **Firestore** | PostgreSQL für strukturierte Experiment-Daten und Relationen; Firestore für Live-Experiment-Status und schnelle Reads im Dashboard |
-| Search/Analytics | **Elasticsearch** | Volltextsuche über LLM-Responses, Aggregationen für Metriken |
-| LLM APIs | **OpenAI** (GPT-4o-mini), **Gemini** Flash, **Claude** Haiku, **Perplexity** | Vier Anbieter für breiten Vergleich, günstige Tiers |
-| SERP API | **Serper.dev** | Kostenloser Tier (2.500 Queries), JSON-Response |
-| HTML Parsing | **cheerio**, **@mozilla/readability** | Schnelles HTML-Parsing in Node.js, serverseitige Content-Extraktion |
-| Frontend | **React**, **TypeScript**, **shadcn/ui**, **Tailwind CSS**, **Recharts** | Modernes UI-Toolkit, konsistent mit Peec AIs Frontend-Stack |
-| Containerisierung | **Docker**, docker-compose | Reproduzierbare Umgebung, lokale Entwicklung mit GCP-Emulator |
-| CI/CD | **GitHub Actions** | Automatische Tests, Linting, Type-Checking bei jedem Push |
-| Tests | **Vitest**, **Supertest** | Schnelle Unit-/Integrationstests für TypeScript |
+### Citation Rate nach Format
+
+| Format | Citation Rate | Format Lift vs. Clean HTML |
+|--------|:------------:|:--------------------------:|
+| **JSON-LD** | **72-80%** | **+16% bis +32%** |
+| Markdown | 60-77% | -5% bis +11% |
+| Clean HTML (Baseline) | 57-69% | 0% (Baseline) |
+| Raw HTML | 40-60% | -42% bis +5% |
+
+**Kernbefund:** JSON-LD-formatierte Inhalte werden konsistent haufiger von LLMs zitiert als identische Inhalte in anderen Formaten. Der Lift gegenuber der Clean-HTML-Baseline betragt +16-32%.
+
+### Position Bias
+
+| Metrik | Wert | Interpretation |
+|--------|:----:|----------------|
+| Pearson-Korrelation | 0.54-0.67 | Moderater bis starker Primacy Bias |
+
+Quellen, die fruher im Context erscheinen, werden haufiger zitiert. Dies bestatigt die Notwendigkeit der Positionsrotation im Experiment-Design.
+
+### Cross-LLM Vergleich
+
+| LLM | JSON-LD | Markdown | Raw HTML |
+|-----|:-------:|:--------:|:--------:|
+| **GPT-4o-mini** | 72-76% | 60% | 48-62% |
+| **Claude Haiku** | 56-88% | 72-78% | 0% |
+
+- OpenAI bevorzugt JSON-LD deutlich gegenuber Markdown
+- Anthropic zeigt eine hohere Varianz, bevorzugt aber ebenfalls strukturierte Formate
+- Raw HTML schneidet bei allen LLMs am schlechtesten ab — bei Claude Haiku wurde es gar nicht zitiert (Content zu gross/unstrukturiert)
+
+### Implikationen fur GEO
+
+1. **Strukturierte Daten lohnen sich.** JSON-LD bietet den grossten Vorteil fur die Sichtbarkeit in LLM-generierten Antworten.
+2. **Position matters.** Unternehmen sollten nicht nur das Format optimieren, sondern auch anstreben, in SERP-Ergebnissen moglichst weit oben zu erscheinen.
+3. **LLMs reagieren unterschiedlich.** Eine GEO-Strategie sollte mehrere Modelle berucksichtigen.
+4. **Raw HTML ist kontraproduktiv.** Unstrukturierte Webseiten werden signifikant seltener zitiert.
 
 ---
 
@@ -225,34 +246,3 @@ geo-format-benchmark/
 ```
 
 ---
-
-## Kostenabschätzung
-
-| Posten | Berechnung | Kosten |
-|--------|-----------|--------|
-| Serper.dev | Kostenloser Tier: 2.500 Queries | $0 |
-| GPT-4o-mini | ~75 Calls × ~2K Tokens = 150K Tokens | ~$0.02 |
-| Gemini Flash | ~75 Calls, kostenloser Tier | $0 |
-| Claude Haiku | ~75 Calls × ~2K Tokens = 150K Tokens | ~$0.04 |
-| Perplexity Sonar | ~75 Calls (pay-per-use) | ~$0.04 |
-| **Gesamt pro Query** | | **< $0.15** |
-| **10 Queries (MVP)** | | **< $1.50** |
-
----
-
-## MVP-Scope (Woche 1–2)
-
-1. Backend (TypeScript/Express): SERP Fetch → HTML Extract → Format Convert → LLM Runner (nur Format-Rotation, eine Permutation)
-2. Response Parser + Metriken-Berechnung
-3. Frontend (React/shadcn/Tailwind): Query-Eingabe + Ergebnis-Tabelle + Citation-Chart
-4. PostgreSQL-Schema, Firestore für Live-Status
-5. Docker-Setup, 5+ Unit-Tests (Vitest), CI-Pipeline mit Type-Checking
-6. README mit Setup-Anleitung, Architekturdiagramm, Beispiel-Output
-
-## Erweiterungen (Woche 3+)
-
-- Volle Positionsrotation (Latin-Square)
-- Statistische Signifikanztests (Chi-Squared, Bootstrap)
-- Weitere Formate testen (XML, YAML, Tabellen)
-- Prompt-Variationen als zusätzliche Variable
-- Vergleich mit tatsächlichem Perplexity/ChatGPT-Browsing-Verhalten

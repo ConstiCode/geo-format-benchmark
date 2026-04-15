@@ -18,7 +18,7 @@ Eine Webanwendung, die es dem Nutzer erlaubt, eine Google-Suche einzugeben. Die 
 
 ### 1. Nutzereingabe
 
-Der Nutzer gibt eine Suchanfrage ein, z.B. *"best CRM for startups"*.
+Der Nutzer gibt eine Suchanfrage ein, z.B. *"best german bike stores"*.
 
 ### 2. SERP Fetch
 
@@ -35,9 +35,9 @@ Jeder der 5 Seiteninhalte wird in vier Formate umgewandelt. Der **Inhalt bleibt 
 
 | Format | Beschreibung | Beispiel |
 |--------|-------------|----------|
-| **Raw HTML** | Vollständiger HTML-Quelltext wie vom Server geliefert — inklusive Navigation, Footer, Script-Tags, Ads-Container | `<div class="nav">...</div><main><h1>Best CRMs</h1>...` |
-| **Clean HTML** | Nur der Hauptinhalt mit semantischen Tags, ohne Boilerplate | `<h1>Best CRMs</h1><p>HubSpot is...</p><ul>...` |
-| **Markdown** | Strukturierter Fließtext mit Überschriften, Listen, Hervorhebungen | `# Best CRMs\n\nHubSpot is...\n\n- Free tier...` |
+| **Raw HTML** | Vollständiger HTML-Quelltext wie vom Server geliefert — inklusive Navigation, Footer, Script-Tags, Ads-Container | `<div class="nav">...</div><main><h1>Best Bike Shops</h1>...` |
+| **Clean HTML** | Nur der Hauptinhalt mit semantischen Tags, ohne Boilerplate | `<h1>Best Bike Shops</h1><p>HubSpot is...</p><ul>...` |
+| **Markdown** | Strukturierter Fließtext mit Überschriften, Listen, Hervorhebungen | `# Best Shops\n\nMount7 is...\n\n- Free tier...` |
 | **JSON-LD** | Schema.org-strukturierte Daten mit expliziten Feldern | `{"@type": "Article", "name": "...", "description": "...", "mentions": [...]}` |
 
 ### 4. Experiment-Design
